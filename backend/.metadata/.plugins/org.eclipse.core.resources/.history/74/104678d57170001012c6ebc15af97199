@@ -1,0 +1,5 @@
+package com.example.smartvendorapp.service;
+
+public class UserService {
+
+}
