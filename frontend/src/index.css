@@ -1,0 +1,247 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* VendorHub Design System - Professional E-commerce Platform */
+
+@layer base {
+  :root {
+    /* Core Backgrounds */
+    --background: 248 250 252%;
+    --foreground: 225 29% 17%;
+
+    /* Card System */
+    --card: 0 0% 100%;
+    --card-foreground: 225 29% 17%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 29% 17%;
+
+    /* Primary Brand - Professional Indigo */
+    --primary: 234 89% 65%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 234 89% 75%;
+    --primary-dark: 234 89% 55%;
+
+    /* Secondary - Clean Slate */
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 225 29% 17%;
+
+    /* Success - Emerald Green */
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 160 84% 89%;
+
+    /* Warning - Amber */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 38 92% 90%;
+
+    /* Danger */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Muted Elements */
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+
+    /* Accent */
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 225 29% 17%;
+
+    /* Form Elements */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 234 89% 65%;
+
+    /* Design Properties */
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(234 89% 65%), hsl(234 89% 75%));
+    --gradient-success: linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 49%));
+    --gradient-surface: linear-gradient(135deg, hsl(0 0% 100%), hsl(220 14.3% 98%));
+    --gradient-hero: linear-gradient(135deg, hsl(234 89% 65%) 0%, hsl(234 89% 55%) 50%, hsl(220 25% 25%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(220 13% 91% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(220 13% 91% / 0.1), 0 2px 4px -1px hsl(220 13% 91% / 0.06);
+    --shadow-lg: 0 10px 15px -3px hsl(220 13% 91% / 0.1), 0 4px 6px -2px hsl(220 13% 91% / 0.05);
+    --shadow-xl: 0 20px 25px -5px hsl(220 13% 91% / 0.1), 0 10px 10px -5px hsl(220 13% 91% / 0.04);
+    --shadow-glow: 0 0 40px hsl(234 89% 65% / 0.15);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+  }
+
+  .dark {
+    /* Core Backgrounds - Dark */
+    --background: 225 29% 8%;
+    --foreground: 0 0% 95%;
+
+    /* Card System - Dark */
+    --card: 225 29% 12%;
+    --card-foreground: 0 0% 95%;
+
+    /* Popover - Dark */
+    --popover: 225 29% 12%;
+    --popover-foreground: 0 0% 95%;
+
+    /* Primary remains vibrant in dark */
+    --primary: 234 89% 65%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 234 89% 75%;
+    --primary-dark: 234 89% 55%;
+
+    /* Secondary - Dark */
+    --secondary: 225 29% 16%;
+    --secondary-foreground: 0 0% 95%;
+
+    /* Success - Emerald (adjusted for dark) */
+    --success: 160 84% 45%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 160 84% 15%;
+
+    /* Warning - Amber (adjusted for dark) */
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 38 92% 15%;
+
+    /* Danger - Dark */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Muted Elements - Dark */
+    --muted: 225 29% 16%;
+    --muted-foreground: 220 8.9% 65%;
+
+    /* Accent - Dark */
+    --accent: 225 29% 16%;
+    --accent-foreground: 0 0% 95%;
+
+    /* Form Elements - Dark */
+    --border: 225 29% 20%;
+    --input: 225 29% 20%;
+    --ring: 234 89% 65%;
+
+    /* Gradients - Dark Mode */
+    --gradient-primary: linear-gradient(135deg, hsl(234 89% 65%), hsl(234 89% 55%));
+    --gradient-success: linear-gradient(135deg, hsl(160 84% 45%), hsl(160 84% 35%));
+    --gradient-surface: linear-gradient(135deg, hsl(225 29% 12%), hsl(225 29% 16%));
+    --gradient-hero: linear-gradient(135deg, hsl(234 89% 65%) 0%, hsl(234 89% 45%) 50%, hsl(225 29% 8%) 100%);
+
+    /* Shadows - Dark */
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.15);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.25), 0 2px 4px -1px hsl(0 0% 0% / 0.15);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.25), 0 4px 6px -2px hsl(0 0% 0% / 0.15);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.25), 0 10px 10px -5px hsl(0 0% 0% / 0.15);
+    --shadow-glow: 0 0 40px hsl(234 89% 65% / 0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer utilities {
+  /* Custom Gradient Utilities */
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .gradient-success {
+    background: var(--gradient-success);
+  }
+  
+  .gradient-surface {
+    background: var(--gradient-surface);
+  }
+  
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  /* Custom Shadow Utilities */
+  .shadow-elegant {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* Animation Utilities */
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-out;
+  }
+  
+  .animate-slide-up {
+    animation: slide-up 0.6s ease-out;
+  }
+  
+  .animate-scale-in {
+    animation: scale-in 0.4s ease-out;
+  }
+
+  /* Hover Effects */
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
