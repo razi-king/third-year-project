@@ -31,7 +31,7 @@ public class Cart {
     private UUID id;
 
     @OneToOne
-    @JoinColumn(name="customer_id")
+    @JoinColumn(name="customer_id", nullable = false)
     private User customer;
 
     private Double totalAmount;

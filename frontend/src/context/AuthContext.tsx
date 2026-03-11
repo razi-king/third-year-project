@@ -14,7 +14,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string, role: UserRole) => Promise<boolean>;
-  register: (email: string, password: string, name: string, role: UserRole) => Promise<boolean>;
+  register: (email: string, password: string, name: string, role: UserRole, storeName?: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -27,12 +27,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Check for saved user on app start
   useEffect(() => {
-    const savedUser = localStorage.getItem('vendorhub_user');
-    const token = localStorage.getItem('vendorhub_token');
-    if (savedUser && token) {
-      setUser(JSON.parse(savedUser));
-    }
-    setIsLoading(false);
+    const checkAuth = async () => {
+      const savedUser = localStorage.getItem('vendorhub_user');
+      const token = localStorage.getItem('vendorhub_token');
+      
+      if (savedUser && token) {
+        try {
+          const profile = await authService.getProfile();
+          setUser(profile);
+        } catch (error) {
+          console.error("Token invalid or expired", error);
+          setUser(null);
+          localStorage.removeItem('vendorhub_user');
+          localStorage.removeItem('vendorhub_token');
+          localStorage.removeItem('vendorhub_role');
+          localStorage.removeItem('vendorhub_userId');
+        }
+      }
+      setIsLoading(false);
+    };
+    checkAuth();
   }, []);
 
   // Real login function
@@ -42,6 +56,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await authService.login({ email, password, role });
       setUser(response.user);
       localStorage.setItem('vendorhub_token', response.token);
+      localStorage.setItem('vendorhub_userId', response.userId);
+      localStorage.setItem('vendorhub_role', response.role);
       localStorage.setItem('vendorhub_user', JSON.stringify(response.user));
       return true;
     } catch (error) {
@@ -53,12 +69,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Real register function
-  const register = async (email: string, password: string, name: string, role: UserRole): Promise<boolean> => {
+  const register = async (email: string, password: string, name: string, role: UserRole, storeName?: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const response = await authService.register({ email, password, name, role });
+      const response = await authService.register({ email, password, name, role, storeName });
       setUser(response.user);
       localStorage.setItem('vendorhub_token', response.token);
+      localStorage.setItem('vendorhub_userId', response.userId);
+      localStorage.setItem('vendorhub_role', response.role);
       localStorage.setItem('vendorhub_user', JSON.stringify(response.user));
       return true;
     } catch (error) {
@@ -78,6 +96,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       localStorage.removeItem('vendorhub_user');
       localStorage.removeItem('vendorhub_token');
+      localStorage.removeItem('vendorhub_role');
+      localStorage.removeItem('vendorhub_userId');
     }
   };
 

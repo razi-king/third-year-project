@@ -1,3 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
+import productService from "@/services/productService";
+import { useAuth } from "@/context/AuthContext";
 import { VendorLayout } from "@/components/layout/VendorLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,32 +18,46 @@ import {
 import { SalesChart } from "@/components/dashboard/SalesChart";
 
 const Analytics = () => {
+  const { user } = useAuth();
+
+  const { data: productsPage, isLoading } = useQuery({
+    queryKey: ['vendorAnalytics', user?.id],
+    queryFn: () => productService.getByVendor(user?.id || '', { size: 100 }), // Fetch larger size for metrics
+    enabled: !!user?.id,
+  });
+
+  const products = productsPage?.content || [];
+  
+  // Very basic derived metrics to show variation based on real products
+  const totalStockStr = products.reduce((acc: number, p: any) => acc + (p.stock || 0), 0).toString();
+  const totalProductsStr = products.length.toString();
+  
   const kpiData = [
     {
       title: "Revenue",
-      value: "$45,231.89",
-      change: "+20.1% from last month",
+      value: "$0.00", // Would come from an actual analytics/sales endpoint
+      change: "0% from last month",
       trend: "up",
       icon: DollarSign,
     },
     {
       title: "Orders",
-      value: "2,350",
-      change: "+180.1% from last month",
+      value: "0",
+      change: "0% from last month",
       trend: "up",
       icon: ShoppingCart,
     },
     {
-      title: "Products Sold",
-      value: "12,234",
-      change: "+19% from last month",
+      title: "Total Listings",
+      value: totalProductsStr,
+      change: "Listed products",
       trend: "up",
       icon: Package,
     },
     {
-      title: "Active Customers",
-      value: "573",
-      change: "+201 since last month",
+      title: "Total Stock Inventory",
+      value: totalStockStr,
+      change: "Items available",
       trend: "up",
       icon: Users,
     },
@@ -77,13 +94,12 @@ const Analytics = () => {
     },
   ];
 
-  const topProducts = [
-    { name: "Wireless Headphones", sales: 1234, revenue: "$98,720", growth: "+15%" },
-    { name: "Coffee Beans Premium", sales: 890, revenue: "$40,455", growth: "+8%" },
-    { name: "Fitness Tracker", sales: 756, revenue: "$150,844", growth: "+22%" },
-    { name: "Organic Face Cream", sales: 623, revenue: "$80,990", growth: "+12%" },
-    { name: "Smart Watch", sales: 445, revenue: "$133,500", growth: "+5%" },
-  ];
+  const topProducts = products.slice(0, 5).map((p: any) => ({
+    name: p.name,
+    sales: 0, // Mock for now
+    revenue: "$0", // Mock for now
+    growth: "0%"
+  }));
 
   const customerSegments = [
     { segment: "New Customers", percentage: 35, count: 203 },
@@ -189,18 +205,22 @@ const Analytics = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {topProducts.map((product, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-accent/20">
-                    <div>
-                      <h4 className="font-medium">{product.name}</h4>
-                      <p className="text-sm text-muted-foreground">{product.sales} sales</p>
+                {topProducts.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-4">No top products yet.</div>
+                ) : (
+                  topProducts.map((product, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-accent/20">
+                      <div>
+                        <h4 className="font-medium">{product.name}</h4>
+                        <p className="text-sm text-muted-foreground">{product.sales} sales</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">{product.revenue}</p>
+                        <p className="text-sm text-success">{product.growth}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold">{product.revenue}</p>
-                      <p className="text-sm text-success">{product.growth}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

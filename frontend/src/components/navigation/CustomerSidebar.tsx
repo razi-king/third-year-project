@@ -15,6 +15,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import cartService from "@/services/cartService";
+import wishlistService from "@/services/wishlistService";
 
 interface SidebarItem {
   title: string;
@@ -38,13 +41,11 @@ const mainNavigation: SidebarItem[] = [
     title: "Shopping Cart",
     href: "/customer/cart",
     icon: ShoppingCart,
-    badge: "3",
   },
   {
     title: "Wishlist",
     href: "/customer/wishlist",
     icon: Heart,
-    badge: "12",
   },
   {
     title: "My Orders",
@@ -79,8 +80,25 @@ export const CustomerSidebar = ({ className }: CustomerSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
+  const { data: cartData } = useQuery({
+    queryKey: ['cart'],
+    queryFn: () => cartService.getCart(),
+  });
+
+  const { data: wishlistData } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: () => wishlistService.getWishlist(),
+  });
+
+  const cartCount = cartData?.items?.length || 0;
+  const wishlistCount = Array.isArray(wishlistData) ? wishlistData.length : 0;
+
   const NavItem = ({ item }: { item: SidebarItem }) => {
     const isActive = location.pathname === item.href;
+    
+    let badge = item.badge;
+    if (item.href === "/customer/cart" && cartCount > 0) badge = cartCount.toString();
+    if (item.href === "/customer/wishlist" && wishlistCount > 0) badge = wishlistCount.toString();
     
     return (
       <NavLink
@@ -97,9 +115,9 @@ export const CustomerSidebar = ({ className }: CustomerSidebarProps) => {
         {!collapsed && (
           <>
             <span className="truncate">{item.title}</span>
-            {item.badge && (
+            {badge && (
               <div className="ml-auto bg-primary-light text-primary-foreground text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
-                {item.badge}
+                {badge}
               </div>
             )}
           </>

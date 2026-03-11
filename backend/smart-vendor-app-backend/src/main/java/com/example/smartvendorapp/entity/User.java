@@ -3,6 +3,7 @@ package com.example.smartvendorapp.entity;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.example.smartvendorapp.enums.Role;
 
 import jakarta.persistence.Column;
@@ -28,14 +29,17 @@ public class User {
  @GeneratedValue
  private UUID id;
 
+ @Column(nullable = false)
  private String name;
 
- @Column(unique=true)
+ @Column(nullable = false, unique=true)
  private String email;
 
+ @Column(nullable = false)
  private String password;
 
  @Enumerated(EnumType.STRING)
+ @Column(nullable = false)
  private Role role;
 
  private String avatar;

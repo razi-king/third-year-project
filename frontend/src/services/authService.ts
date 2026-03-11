@@ -12,10 +12,13 @@ export interface RegisterRequest {
   password: string;
   name: string;
   role: UserRole;
+  storeName?: string;
 }
 
 export interface AuthResponse {
   token: string;
+  userId: string;
+  role: UserRole;
   user: {
     id: string;
     email: string;
@@ -44,6 +47,19 @@ const authService = {
   logout: async (): Promise<void> => {
     await api.post('/api/auth/logout');
   },
+
+  updateProfile: async (data: { name: string, email: string }): Promise<AuthResponse['user']> => {
+    const response = await api.put<AuthResponse['user']>('/api/auth/profile', data);
+    return response.data;
+  },
+
+  updatePassword: async (data: { currentPassword: string, newPassword: string }): Promise<void> => {
+    await api.put('/api/auth/password', data);
+  },
+
+  updateSettings: async (data: any): Promise<void> => {
+    await api.put('/api/auth/settings', data);
+  }
 };
 
 export default authService;

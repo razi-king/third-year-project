@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, ShoppingBag, Store, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -16,6 +16,7 @@ const Login = () => {
   const [role, setRole] = useState<UserRole>("CUSTOMER");
   const { login, isLoading } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +37,8 @@ const Login = () => {
         title: "Welcome back!",
         description: `Logged in successfully as ${role}`,
       });
+      const redirectPath = role === 'VENDOR' ? '/vendor/dashboard' : role === 'ADMIN' ? '/admin/dashboard' : '/customer/dashboard';
+      navigate(redirectPath);
     } else {
       toast({
         title: "Login failed",

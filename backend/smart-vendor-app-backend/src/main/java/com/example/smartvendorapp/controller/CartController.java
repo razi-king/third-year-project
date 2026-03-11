@@ -1,7 +1,7 @@
 package com.example.smartvendorapp.controller;
 
-import java.util.Map;
 import java.util.UUID;
+import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.smartvendorapp.dto.CartDto;
+import com.example.smartvendorapp.dto.CartItemRequest;
+import com.example.smartvendorapp.dto.UpdateCartItemRequest;
 import com.example.smartvendorapp.service.CartService;
 
 import lombok.RequiredArgsConstructor;
@@ -34,22 +36,17 @@ public class CartController {
     }
 
     @PostMapping("/items")
-    public ResponseEntity<CartDto> addItemToCart(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<CartDto> addItemToCart(@Valid @RequestBody CartItemRequest request) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UUID productId = UUID.fromString(payload.get("productId").toString());
-        Integer quantity = Integer.parseInt(payload.get("quantity").toString());
-        
-        return ResponseEntity.ok(cartService.addItemToCart(auth.getName(), productId, quantity));
+        return ResponseEntity.ok(cartService.addItemToCart(auth.getName(), request.getProductId(), request.getQuantity()));
     }
 
     @PatchMapping("/items/{productId}")
     public ResponseEntity<CartDto> updateItemQuantity(
             @PathVariable UUID productId,
-            @RequestBody Map<String, Integer> payload) {
+            @Valid @RequestBody UpdateCartItemRequest request) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        Integer quantity = payload.get("quantity");
-        
-        return ResponseEntity.ok(cartService.updateItemQuantity(auth.getName(), productId, quantity));
+        return ResponseEntity.ok(cartService.updateItemQuantity(auth.getName(), productId, request.getQuantity()));
     }
 
     @DeleteMapping("/items/{productId}")

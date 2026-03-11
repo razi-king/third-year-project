@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.Column;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,15 +27,25 @@ public class Vendor {
  private UUID id;
 
  @OneToOne
- @JoinColumn(name="user_id")
+ @JoinColumn(name="user_id", nullable = false)
  private User user;
 
- private String shopName;
+ @Column(nullable = false)
+ private String storeName;
+ 
+ @Column(columnDefinition = "TEXT")
  private String description;
+ 
+ private String businessRegistrationNumber;
+ private String taxId;
+ private String storeLogo;
+ 
  private String address;
  private String phone;
 
- private String status;
+ @Column(nullable = false)
+ @Builder.Default
+ private String status = "PENDING";
 
  private LocalDateTime createdAt;
 }

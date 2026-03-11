@@ -9,19 +9,17 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import com.example.smartvendorapp.dto.OrderDto;
+import com.example.smartvendorapp.exception.ResourceNotFoundException;
 import com.example.smartvendorapp.dto.PageResponse;
 import com.example.smartvendorapp.enums.OrderStatus;
 import com.example.smartvendorapp.service.OrderService;
+import com.example.smartvendorapp.entity.User;
+import com.example.smartvendorapp.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -31,8 +29,10 @@ import lombok.RequiredArgsConstructor;
 public class OrderController {
 
     private final OrderService orderService;
+    private final UserRepository userRepository;
 
     @GetMapping("/orders")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PageResponse<OrderDto>> getAllOrders(
             @RequestParam(required = false) OrderStatus status,
             @RequestParam(defaultValue = "0") int page,
@@ -42,13 +42,30 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getAllOrders(status, pageable));
     }
 
+    @GetMapping("/orders/my")
+    public ResponseEntity<PageResponse<OrderDto>> getMyOrders(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User customer = userRepository.findByEmail(userDetails.getUsername())
+            .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return ResponseEntity.ok(orderService.getOrdersByCustomer(customer.getId(), pageable));
+    }
+
     @GetMapping("/orders/{id}")
     public ResponseEntity<OrderDto> getOrderById(@PathVariable UUID id) {
         return ResponseEntity.ok(orderService.getOrderById(id));
     }
 
     @PostMapping("/orders")
-    public ResponseEntity<OrderDto> createOrder(@RequestBody OrderDto orderDto) {
+    public ResponseEntity<OrderDto> createOrder(@Valid @RequestBody OrderDto orderDto) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return ResponseEntity.ok(orderService.createOrder(orderDto, auth.getName()));
     }
@@ -87,5 +104,14 @@ public class OrderController {
         
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return ResponseEntity.ok(orderService.getOrdersByVendor(vendorId, status, pageable));
+    }
+
+    @PutMapping("/vendor/orders/{orderId}/status")
+    @PreAuthorize("hasRole('VENDOR')")
+    public ResponseEntity<OrderDto> updateVendorOrderStatus(
+            @PathVariable UUID orderId,
+            @RequestBody Map<String, String> payload) {
+        OrderStatus status = OrderStatus.valueOf(payload.get("status").toUpperCase());
+        return ResponseEntity.ok(orderService.updateVendorOrderStatus(orderId, status, SecurityContextHolder.getContext().getAuthentication().getName()));
     }
 }

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import analyticsService from "@/services/analyticsService";
+import vendorService from "@/services/vendorService";
 import { 
   Package, 
   ShoppingCart, 
@@ -19,12 +20,26 @@ import {
   MoreHorizontal,
   Calendar
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const VendorDashboard = () => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['vendorStats'],
     queryFn: () => analyticsService.getDashboardStats(),
   });
+
+  const { data: ordersPage } = useQuery({
+    queryKey: ['vendorOrders'],
+    queryFn: () => vendorService.getOrders({ size: 4 }),
+  });
+
+  const { data: productsPage } = useQuery({
+    queryKey: ['vendorProducts'],
+    queryFn: () => vendorService.getProducts({ size: 3 }),
+  });
+
+  const recentOrdersData = ordersPage?.content || [];
+  const topProductsData = productsPage?.content || [];
 
   const quickStats = [
     {
@@ -72,65 +87,6 @@ const VendorDashboard = () => {
     },
   ];
 
-  const recentOrders = [
-    {
-      id: "#12543",
-      customer: "Sarah Johnson",
-      product: "Wireless Bluetooth Headphones",
-      amount: "$89.99",
-      status: "Processing",
-      date: "2 mins ago",
-    },
-    {
-      id: "#12542",
-      customer: "Mike Chen",
-      product: "Premium Coffee Beans (2kg)",
-      amount: "$45.99",
-      status: "Shipped",
-      date: "15 mins ago",
-    },
-    {
-      id: "#12541",
-      customer: "Emily Davis",
-      product: "Organic Face Cream Set",
-      amount: "$129.99",
-      status: "Delivered",
-      date: "1 hour ago",
-    },
-    {
-      id: "#12540",
-      customer: "David Wilson",
-      product: "Fitness Tracker Pro",
-      amount: "$199.99",
-      status: "Processing",
-      date: "2 hours ago",
-    },
-  ];
-
-  const topProducts = [
-    {
-      name: "Wireless Bluetooth Headphones",
-      sales: 45,
-      revenue: "$4,049.55",
-      stock: 23,
-      image: "🎧",
-    },
-    {
-      name: "Premium Coffee Beans",
-      sales: 38,
-      revenue: "$1,747.62",
-      stock: 67,
-      image: "☕",
-    },
-    {
-      name: "Organic Face Cream",
-      sales: 31,
-      revenue: "$4,029.69",
-      stock: 12,
-      image: "🧴",
-    },
-  ];
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Processing":
@@ -165,9 +121,11 @@ const VendorDashboard = () => {
               <Calendar className="h-4 w-4" />
               Last 30 days
             </Button>
-            <Button className="gradient-primary flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add Product
+            <Button className="gradient-primary flex items-center gap-2" asChild>
+              <Link to="/vendor/add-product">
+                <Plus className="h-4 w-4" />
+                Add Product
+              </Link>
             </Button>
           </div>
         </div>
@@ -211,26 +169,30 @@ const VendorDashboard = () => {
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              {recentOrders.map((order) => (
+              {recentOrdersData.length === 0 ? (
+                <p className="text-muted-foreground p-4">No recent orders found.</p>
+              ) : recentOrdersData.map((order: any) => (
                 <div key={order.id} className="flex items-center justify-between p-4 rounded-lg bg-accent/20 hover:bg-accent/30 transition-colors">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <h4 className="font-medium">{order.customer}</h4>
+                      <h4 className="font-medium">{order.customerName || 'Customer'}</h4>
                       <Badge className={getStatusColor(order.status)}>
                         {order.status}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">{order.product}</p>
-                    <p className="text-xs text-muted-foreground">{order.date}</p>
+                    <p className="text-sm text-muted-foreground">{order.items?.length || 0} items</p>
+                    <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">{order.amount}</p>
-                    <p className="text-sm text-muted-foreground">{order.id}</p>
+                    <p className="font-semibold">${order.totalAmount?.toFixed(2)}</p>
+                    <p className="text-sm text-muted-foreground">#{order.id.substring(0, 8)}</p>
                   </div>
                 </div>
               ))}
-              <Button variant="outline" className="w-full">
-                View All Orders
+              <Button variant="outline" className="w-full" asChild>
+                <Link to="/vendor/orders">
+                  View All Orders
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -242,27 +204,31 @@ const VendorDashboard = () => {
               <CardDescription>Your best-selling items this month</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {topProducts.map((product, index) => (
+              {topProductsData.length === 0 ? (
+                <p className="text-muted-foreground p-4">No top products available.</p>
+              ) : topProductsData.map((product: any, index: number) => (
                 <div key={index} className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="text-2xl">{product.image}</div>
+                      <div className="text-2xl">📦</div>
                       <div>
                         <h4 className="font-medium">{product.name}</h4>
                         <p className="text-sm text-muted-foreground">
-                          {product.sales} sales • Stock: {product.stock}
+                          Stock: {product.stock}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold">{product.revenue}</p>
+                      <p className="font-semibold">${product.price?.toFixed(2)}</p>
                     </div>
                   </div>
-                  <Progress value={(product.sales / 50) * 100} className="h-2" />
+                  <Progress value={Math.min(100, product.stock)} className="h-2" />
                 </div>
               ))}
-              <Button variant="outline" className="w-full">
-                View Product Analytics
+              <Button variant="outline" className="w-full" asChild>
+                <Link to="/vendor/analytics">
+                  View Product Analytics
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -276,21 +242,29 @@ const VendorDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button variant="outline" className="h-20 flex-col gap-2">
-                <Package className="h-6 w-6" />
-                <span>Add Product</span>
+              <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                <Link to="/vendor/add-product">
+                  <Package className="h-6 w-6" />
+                  <span>Add Product</span>
+                </Link>
               </Button>
-              <Button variant="outline" className="h-20 flex-col gap-2">
-                <ShoppingCart className="h-6 w-6" />
-                <span>Process Orders</span>
+              <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                <Link to="/vendor/orders">
+                  <ShoppingCart className="h-6 w-6" />
+                  <span>Process Orders</span>
+                </Link>
               </Button>
-              <Button variant="outline" className="h-20 flex-col gap-2">
-                <TrendingUp className="h-6 w-6" />
-                <span>View Analytics</span>
+              <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                <Link to="/vendor/analytics">
+                  <TrendingUp className="h-6 w-6" />
+                  <span>View Analytics</span>
+                </Link>
               </Button>
-              <Button variant="outline" className="h-20 flex-col gap-2">
-                <Users className="h-6 w-6" />
-                <span>Customer Support</span>
+              <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                <Link to="/vendor/customers">
+                  <Users className="h-6 w-6" />
+                  <span>Customer Support</span>
+                </Link>
               </Button>
             </div>
           </CardContent>

@@ -12,7 +12,7 @@ import com.example.smartvendorapp.enums.ProductStatus;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, UUID> {
-    Page<Product> findByCategoryAndStatus(String category, ProductStatus status, Pageable pageable);
+    Page<Product> findByCategory_NameAndStatus(String categoryName, ProductStatus status, Pageable pageable);
     Page<Product> findByStatus(ProductStatus status, Pageable pageable);
     Page<Product> findByVendorId(UUID vendorId, Pageable pageable);
     Page<Product> findByNameContainingIgnoreCase(String name, Pageable pageable);

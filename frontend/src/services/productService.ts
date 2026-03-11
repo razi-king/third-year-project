@@ -8,8 +8,12 @@ export interface Product {
   stock: number;
   category: string;
   imageUrl?: string;
-  vendorId: string;
-  status: 'active' | 'inactive' | 'out_of_stock';
+  vendorId?: string;
+  vendorName?: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'active' | 'inactive' | 'out_of_stock';
+  rating?: number;
+  reviews?: number;
+  isWishlisted?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +63,11 @@ const productService = {
 
   getByVendor: async (vendorId: string, filters?: ProductFilters): Promise<PageResponse<Product>> => {
     const response = await api.get<PageResponse<Product>>(`/api/vendors/${vendorId}/products`, { params: filters });
+    return response.data;
+  },
+
+  createByVendor: async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'vendorId'>): Promise<Product> => {
+    const response = await api.post<Product>('/api/vendor/products', product);
     return response.data;
   },
 };

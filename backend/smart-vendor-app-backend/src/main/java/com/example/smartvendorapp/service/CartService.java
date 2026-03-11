@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.smartvendorapp.dto.CartDto;
 import com.example.smartvendorapp.dto.CartItemDto;
@@ -14,6 +15,7 @@ import com.example.smartvendorapp.entity.CartItem;
 import com.example.smartvendorapp.entity.Product;
 import com.example.smartvendorapp.entity.User;
 import com.example.smartvendorapp.exception.ResourceNotFoundException;
+import com.example.smartvendorapp.exception.ValidationException;
 import com.example.smartvendorapp.repository.CartRepository;
 import com.example.smartvendorapp.repository.ProductRepository;
 import com.example.smartvendorapp.repository.UserRepository;
@@ -22,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class CartService {
 
     private final CartRepository cartRepository;
@@ -42,6 +45,15 @@ public class CartService {
         Optional<CartItem> existingItem = cart.getItems().stream()
                 .filter(item -> item.getProduct().getId().equals(productId))
                 .findFirst();
+
+        int totalRequested = quantity;
+        if (existingItem.isPresent()) {
+            totalRequested += existingItem.get().getQuantity();
+        }
+
+        if (product.getStock() < totalRequested) {
+            throw new ValidationException("Insufficient stock. Only " + product.getStock() + " items available.");
+        }
 
         if (existingItem.isPresent()) {
             CartItem item = existingItem.get();
@@ -68,6 +80,10 @@ public class CartService {
                 .filter(i -> i.getProduct().getId().equals(productId))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found in cart"));
+
+        if (quantity > item.getProduct().getStock()) {
+            throw new ValidationException("Insufficient stock. Only " + item.getProduct().getStock() + " items available.");
+        }
 
         if (quantity <= 0) {
             cart.getItems().remove(item);

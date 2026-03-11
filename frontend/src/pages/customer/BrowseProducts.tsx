@@ -1,4 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import productService from "@/services/productService";
+import cartService from "@/services/cartService";
+import wishlistService from "@/services/wishlistService";
+import { useToast } from "@/hooks/use-toast";
 import { CustomerLayout } from "@/components/layout/CustomerLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +38,8 @@ import {
 const BrowseProducts = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const categories = [
     "All Categories",
@@ -44,98 +52,58 @@ const BrowseProducts = () => {
     "Automotive"
   ];
 
-  const products = [
-    {
-      id: 1,
-      name: "Premium Wireless Headphones",
-      vendor: "TechStore Pro",
-      price: 299,
-      originalPrice: 399,
-      rating: 4.8,
-      reviews: 124,
-      image: "🎧",
-      category: "Electronics",
-      inStock: true,
-      isWishlisted: false,
-      badge: "Best Seller",
-      description: "High-quality wireless headphones with noise cancellation and premium sound quality."
+  const { data: productsPage, isLoading, error } = useQuery({
+    queryKey: ['products', searchQuery, viewMode], // simple dependency key
+    queryFn: () => productService.getAll({ search: searchQuery }),
+  });
+
+  const { data: wishlistItems } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: () => wishlistService.getWishlist(),
+  });
+
+  const wishlistIds = new Set(wishlistItems?.map((item: any) => item.productId) || []);
+
+  const products = productsPage?.content?.map((p: any) => ({
+    ...p,
+    isWishlisted: p.isWishlisted !== undefined ? p.isWishlisted : wishlistIds.has(p.id)
+  })) || [];
+
+  const addToCartMutation = useMutation({
+    mutationFn: (productId: string) => cartService.addItem(productId, 1),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+      toast({ title: "Success", description: "Product added to cart" });
     },
-    {
-      id: 2,
-      name: "Smart Fitness Watch",
-      vendor: "Health Tech",
-      price: 199,
-      originalPrice: 249,
-      rating: 4.6,
-      reviews: 89,
-      image: "⌚",
-      category: "Electronics",
-      inStock: true,
-      isWishlisted: true,
-      badge: "Sale",
-      description: "Advanced fitness tracking with heart rate monitoring and GPS features."
+    onError: () => {
+      toast({ title: "Error", description: "Failed to add product to cart", variant: "destructive" });
+    }
+  });
+
+  const toggleWishlistMutation = useMutation({
+    mutationFn: (product: any) => {
+      if (product.isWishlisted) {
+        return wishlistService.removeFromWishlist(product.id);
+      } else {
+        return wishlistService.addToWishlist(product.id);
+      }
     },
-    {
-      id: 3,
-      name: "Portable Bluetooth Speaker",
-      vendor: "AudioTech",
-      price: 79,
-      originalPrice: 99,
-      rating: 4.4,
-      reviews: 156,
-      image: "🔊",
-      category: "Electronics", 
-      inStock: false,
-      isWishlisted: false,
-      badge: "Limited",
-      description: "Compact speaker with powerful sound and long battery life."
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast({ 
+        title: variables.isWishlisted ? "Removed" : "Wishlisted", 
+        description: variables.isWishlisted ? "Product removed from wishlist" : "Product added to your wishlist" 
+      });
     },
-    {
-      id: 4,
-      name: "Professional Camera Lens",
-      vendor: "Photo Pro",
-      price: 599,
-      originalPrice: 699,
-      rating: 4.9,
-      reviews: 45,
-      image: "📷",
-      category: "Electronics",
-      inStock: true,
-      isWishlisted: false,
-      badge: "New",
-      description: "Professional grade lens for DSLR cameras with exceptional clarity."
-    },
-    {
-      id: 5,
-      name: "Gaming Mechanical Keyboard",
-      vendor: "Game Master",
-      price: 149,
-      originalPrice: null,
-      rating: 4.7,
-      reviews: 203,
-      image: "⌨️",
-      category: "Electronics",
-      inStock: true,
-      isWishlisted: true,
-      badge: "Popular",
-      description: "RGB mechanical keyboard with customizable switches and lighting."
-    },
-    {
-      id: 6,
-      name: "Wireless Phone Charger",
-      vendor: "PowerUp",
-      price: 39,
-      originalPrice: 49,
-      rating: 4.2,
-      reviews: 78,
-      image: "📱",
-      category: "Electronics",
-      inStock: true,
-      isWishlisted: false,
-      badge: null,
-      description: "Fast wireless charging pad compatible with all Qi-enabled devices."
-    },
-  ];
+    onError: (error: any) => {
+      toast({ 
+        title: "Could not update wishlist", 
+        description: error.response?.data?.message || "Something went wrong.",
+        variant: "destructive"
+      });
+    }
+  });
 
   const getBadgeColor = (badge: string) => {
     switch (badge) {
@@ -148,7 +116,7 @@ const BrowseProducts = () => {
     }
   };
 
-  const ProductCard = ({ product }: { product: typeof products[0] }) => {
+  const ProductCard = ({ product }: { product: any }) => {
     const discount = product.originalPrice ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
 
     return (
@@ -161,6 +129,8 @@ const BrowseProducts = () => {
                 variant="ghost" 
                 size="icon"
                 className={`h-8 w-8 ${product.isWishlisted ? 'text-destructive' : 'text-muted-foreground'}`}
+                onClick={() => toggleWishlistMutation.mutate(product)}
+                disabled={toggleWishlistMutation.isPending && toggleWishlistMutation.variables?.id === product.id}
               >
                 <Heart className={`h-4 w-4 ${product.isWishlisted ? 'fill-current' : ''}`} />
               </Button>
@@ -183,7 +153,12 @@ const BrowseProducts = () => {
         <CardContent className="p-6 pt-0">
           <div className="space-y-3">
             <div>
-              <h3 className="font-semibold text-sm line-clamp-2 mb-1">{product.name}</h3>
+              <Link
+                to={`/customer/product/${product.id}`}
+                className="font-semibold text-sm line-clamp-2 mb-1 hover:text-primary transition-colors"
+              >
+                {product.name}
+              </Link>
               <p className="text-xs text-muted-foreground">by {product.vendor}</p>
             </div>
             
@@ -208,10 +183,18 @@ const BrowseProducts = () => {
               <Button 
                 className="flex-1" 
                 size="sm"
-                disabled={!product.inStock}
+                disabled={!product.inStock || addToCartMutation.isPending}
+                onClick={() => addToCartMutation.mutate(product.id)}
               >
                 <ShoppingCart className="h-3 w-3 mr-1" />
-                {product.inStock ? 'Add to Cart' : 'Out of Stock'}
+                {product.status === 'ACTIVE' || product.status === 'active' || product.stock > 0 || product.inStock ? 'Add to Cart' : 'Out of Stock'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+              >
+                <Link to={`/customer/product/${product.id}`}>Details</Link>
               </Button>
             </div>
           </div>
@@ -307,23 +290,66 @@ const BrowseProducts = () => {
             </p>
           </div>
           
-          <div className={`grid gap-6 ${
-            viewMode === 'grid' 
-              ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
-              : 'grid-cols-1'
-          }`}>
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <p className="text-muted-foreground animate-pulse">Loading products...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+              <div className="p-4 bg-destructive/10 text-destructive rounded-full">
+                <Search className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold">Error Loading Products</h3>
+              <p className="text-muted-foreground max-w-sm">
+                There was a problem fetching the products. Please try again later.
+              </p>
+            </div>
+          ) : products.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+              <div className="p-4 bg-muted rounded-full">
+                <Search className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold">No products found</h3>
+              <p className="text-muted-foreground max-w-sm">
+                We couldn't find any products matching your current filters. Try adjusting your search criteria.
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setSearchQuery('');
+                }}
+              >
+                Clear Filters
+              </Button>
+            </div>
+          ) : (
+            <div className={`grid gap-6 ${
+              viewMode === 'grid' 
+                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
+                : 'grid-cols-1'
+            }`}>
+              {products.map((product: any) => (
+                <ProductCard key={product.id} product={{
+                  ...product,
+                  inStock: product.status === 'ACTIVE' || product.status === 'active' || product.stock > 0,
+                  vendor: product.vendorName || "Unknown Vendor",
+                  image: product.imageUrl || "🛒",
+                  rating: product.rating != null ? product.rating : 0.0,
+                  reviews: product.reviews != null ? product.reviews : 0
+                }} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Load More */}
-        <div className="text-center pt-8">
-          <Button variant="outline" size="lg">
-            Load More Products
-          </Button>
-        </div>
+        {!isLoading && products.length > 0 && (
+          <div className="text-center pt-8">
+            <Button variant="outline" size="lg">
+              Load More Products
+            </Button>
+          </div>
+        )}
       </div>
     </CustomerLayout>
   );

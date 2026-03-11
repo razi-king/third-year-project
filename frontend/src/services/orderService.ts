@@ -60,6 +60,11 @@ const orderService = {
     await api.patch(`/api/orders/${id}/cancel`);
   },
 
+  getMyOrders: async (filters?: OrderFilters): Promise<PageResponse<Order>> => {
+    const response = await api.get<PageResponse<Order>>('/api/orders/my', { params: filters });
+    return response.data;
+  },
+
   getByCustomer: async (customerId: string, filters?: OrderFilters): Promise<PageResponse<Order>> => {
     const response = await api.get<PageResponse<Order>>(`/api/customers/${customerId}/orders`, { params: filters });
     return response.data;

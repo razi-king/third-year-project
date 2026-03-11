@@ -30,33 +30,33 @@ interface SidebarItem {
 const mainNavigation: SidebarItem[] = [
   {
     title: "Dashboard",
-    href: "/",
+    href: "/vendor/dashboard",
     icon: Home,
   },
   {
     title: "Products",
-    href: "/products",
+    href: "/vendor/products",
     icon: Package,
   },
   {
     title: "Orders",
-    href: "/orders",
+    href: "/vendor/orders",
     icon: ShoppingCart,
     badge: "12",
   },
   {
     title: "Analytics",
-    href: "/analytics",
+    href: "/vendor/analytics",
     icon: BarChart3,
   },
   {
     title: "Customers",
-    href: "/customers",
+    href: "/vendor/customers",
     icon: Users,
   },
   {
     title: "Reviews",
-    href: "/reviews",
+    href: "/vendor/reviews",
     icon: Star,
   },
 ];
@@ -64,33 +64,33 @@ const mainNavigation: SidebarItem[] = [
 const businessNavigation: SidebarItem[] = [
   {
     title: "Add Product",
-    href: "/products/new",
+    href: "/vendor/add-product",
     icon: PlusCircle,
   },
   {
     title: "Store Profile",
-    href: "/store-profile",
+    href: "/vendor/store-profile",
     icon: Store,
   },
   {
     title: "Payments",
-    href: "/payments",
+    href: "/vendor/payments",
     icon: Wallet,
   },
   {
     title: "Reports",
-    href: "/reports",
+    href: "/vendor/reports",
     icon: FileText,
   },
   {
     title: "Messages",
-    href: "/messages",
+    href: "/vendor/messages",
     icon: MessageSquare,
     badge: "3",
   },
   {
     title: "Settings",
-    href: "/settings",
+    href: "/vendor/settings",
     icon: Settings,
   },
 ];

@@ -15,56 +15,121 @@ import {
   ArrowLeft,
   Tag
 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import cartService from "@/services/cartService";
+import orderService from "@/services/orderService";
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 const ShoppingCart = () => {
-  const cartItems = [
-    {
-      id: 1,
-      name: "Premium Wireless Headphones",
-      vendor: "TechStore Pro",
-      price: 299,
-      originalPrice: 399,
-      quantity: 1,
-      image: "🎧",
-      inStock: true,
-      shipping: "Free shipping",
-    },
-    {
-      id: 2,
-      name: "Smart Fitness Watch", 
-      vendor: "Health Tech",
-      price: 199,
-      originalPrice: 249,
-      quantity: 2,
-      image: "⌚",
-      inStock: true,
-      shipping: "Free shipping",
-    },
-    {
-      id: 3,
-      name: "Wireless Phone Charger",
-      vendor: "PowerUp", 
-      price: 39,
-      originalPrice: 49,
-      quantity: 1,
-      image: "📱",
-      inStock: false,
-      shipping: "$5.99 shipping",
-    },
-  ];
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [shippingAddress, setShippingAddress] = useState("");
 
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const savings = cartItems.reduce((sum, item) => {
-    if (item.originalPrice) {
-      const originalTotal = item.originalPrice * item.quantity;
-      const currentTotal = item.price * item.quantity;
-      return sum + (originalTotal - currentTotal);
+  const { data: cart, isLoading, error } = useQuery({
+    queryKey: ['cart'],
+    queryFn: cartService.getCart,
+  });
+
+  const updateQuantityMutation = useMutation({
+    mutationFn: ({ productId, quantity }: { productId: string; quantity: number }) => 
+      cartService.updateQuantity(productId, quantity),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update quantity", variant: "destructive" });
     }
-    return sum;
-  }, 0);
+  });
+
+  const removeItemMutation = useMutation({
+    mutationFn: (productId: string) => cartService.removeItem(productId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+      toast({ title: "Success", description: "Item removed from cart" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to remove item", variant: "destructive" });
+    }
+  });
+
+  const handleUpdateQuantity = (productId: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    updateQuantityMutation.mutate({ productId, quantity: newQuantity });
+  };
+
+  const handleRemoveItem = (productId: string) => {
+    removeItemMutation.mutate(productId);
+  };
+
+  const navigate = useNavigate();
+
+  const createOrderMutation = useMutation({
+    mutationFn: (orderData: { items: any[]; shippingAddress: string }) => 
+      orderService.create(orderData),
+    onSuccess: async () => {
+      await cartService.clearCart();
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+      toast({ title: "Order Placed", description: "Your order has been successfully placed!" });
+      navigate("/customer/orders");
+    },
+    onError: (err: any) => {
+      toast({ 
+        title: "Checkout Error", 
+        description: err?.response?.data?.message || "Failed to create order", 
+        variant: "destructive" 
+      });
+    }
+  });
+
+  const handleCheckout = () => {
+    if (!cartItems.length) return;
+    if (!shippingAddress.trim()) {
+      toast({ title: "Validation Error", description: "Please enter a shipping address", variant: "destructive" });
+      return;
+    }
+    
+    const items = cartItems.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.price,
+      productName: item.productName
+    }));
+
+    createOrderMutation.mutate({
+      items,
+      shippingAddress,
+    });
+  };
+
+  const cartItems = cart?.items || [];
+  const subtotal = cart?.totalAmount || 0;
+  const savings = 0;
   const shipping: number = 0; // Free shipping
   const tax = Math.round(subtotal * 0.08 * 100) / 100; // 8% tax
   const total = subtotal + shipping + tax;
+
+  if (isLoading) {
+    return (
+      <CustomerLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      </CustomerLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <CustomerLayout>
+        <div className="text-center py-10">
+          <p className="text-destructive mb-4">Error loading cart. Please try again.</p>
+          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['cart'] })}>Retry</Button>
+        </div>
+      </CustomerLayout>
+    );
+  }
 
   return (
     <CustomerLayout>
@@ -75,9 +140,11 @@ const ShoppingCart = () => {
             <h1 className="text-3xl font-bold">Shopping Cart</h1>
             <p className="text-muted-foreground">Review your items and checkout</p>
           </div>
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Continue Shopping
+          <Button variant="outline" asChild>
+            <Link to="/customer/browse">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Continue Shopping
+            </Link>
           </Button>
         </div>
 
@@ -88,90 +155,77 @@ const ShoppingCart = () => {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Cart Items ({cartItems.length})</span>
-                  <Badge variant="outline">
-                    {cartItems.filter(item => item.inStock).length} in stock
-                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {cartItems.map((item, index) => (
-                  <div key={item.id}>
-                    <div className={`flex items-center space-x-4 p-4 rounded-lg ${!item.inStock ? 'opacity-60 bg-muted/30' : 'hover:bg-accent/30'} transition-colors`}>
-                      <div className="text-3xl">{item.image}</div>
+                  <div key={item.productId || index}>
+                    <div className="flex items-center space-x-4 p-4 rounded-lg hover:bg-accent/30 transition-colors">
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.productName} className="h-16 w-16 object-cover rounded" />
+                      ) : (
+                        <div className="h-16 w-16 bg-muted flex items-center justify-center rounded text-2xl">🛍️</div>
+                      )}
                       
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm">{item.name}</h3>
-                        <p className="text-xs text-muted-foreground mb-1">by {item.vendor}</p>
+                        <h3 className="font-semibold text-sm">{item.productName}</h3>
                         
                         <div className="flex items-center space-x-2 mb-2">
-                          <span className="font-bold">${item.price}</span>
-                          {item.originalPrice && (
-                            <span className="text-xs text-muted-foreground line-through">
-                              ${item.originalPrice}
-                            </span>
-                          )}
-                          {item.originalPrice && (
-                            <Badge variant="outline" className="text-xs">
-                              Save ${item.originalPrice - item.price}
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <Badge 
-                            variant={item.inStock ? "default" : "destructive"}
-                            className="text-xs"
-                          >
-                            {item.inStock ? item.shipping : "Out of Stock"}
-                          </Badge>
-                          {!item.inStock && (
-                            <Badge variant="outline" className="text-xs">
-                              Save for later
-                            </Badge>
-                          )}
+                          <span className="font-bold">${item.price.toFixed(2)}</span>
                         </div>
                       </div>
                       
                       <div className="flex flex-col items-center space-y-2">
-                        {item.inStock ? (
-                          <div className="flex items-center space-x-2">
-                            <Button variant="outline" size="icon" className="h-8 w-8">
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <Input 
-                              type="number" 
-                              value={item.quantity} 
-                              className="w-16 text-center h-8"
-                              min="1"
-                            />
-                            <Button variant="outline" size="icon" className="h-8 w-8">
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button variant="outline" size="sm" disabled>
-                            Notify when available
+                        <div className="flex items-center space-x-2">
+                          <Button 
+                            variant="outline" size="icon" className="h-8 w-8"
+                            onClick={() => handleUpdateQuantity(item.productId, item.quantity - 1)}
+                            disabled={updateQuantityMutation.isPending || item.quantity <= 1}
+                          >
+                            <Minus className="h-3 w-3" />
                           </Button>
-                        )}
+                          <Input 
+                            type="number" 
+                            value={item.quantity} 
+                            className="w-16 text-center h-8"
+                            readOnly
+                          />
+                          <Button 
+                            variant="outline" size="icon" className="h-8 w-8"
+                            onClick={() => handleUpdateQuantity(item.productId, item.quantity + 1)}
+                            disabled={updateQuantityMutation.isPending}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
                         
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                        <Button 
+                          variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                          onClick={() => handleRemoveItem(item.productId)}
+                          disabled={removeItemMutation.isPending}
+                        >
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                       
                       <div className="text-right">
                         <p className="font-bold">${(item.price * item.quantity).toFixed(2)}</p>
-                        {item.originalPrice && (
-                          <p className="text-xs text-muted-foreground line-through">
-                            ${(item.originalPrice * item.quantity).toFixed(2)}
-                          </p>
-                        )}
                       </div>
                     </div>
                     
                     {index < cartItems.length - 1 && <Separator className="my-4" />}
                   </div>
                 ))}
+
+                {cartItems.length === 0 && (
+                  <div className="text-center py-8">
+                    <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                    <p className="text-lg font-medium text-muted-foreground">Your cart is empty</p>
+                    <Button variant="outline" className="mt-4" asChild>
+                      <Link to="/customer/browse">Start Shopping</Link>
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -230,10 +284,24 @@ const ShoppingCart = () => {
                   </div>
                 </div>
 
+                <div className="space-y-2 py-2">
+                  <label className="text-sm font-medium">Shipping Address</label>
+                  <Input 
+                    placeholder="Enter full shipping address" 
+                    value={shippingAddress}
+                    onChange={(e) => setShippingAddress(e.target.value)}
+                  />
+                </div>
+
                 <div className="space-y-2">
-                  <Button className="w-full gradient-primary" size="lg">
+                  <Button 
+                    className="w-full gradient-primary" 
+                    size="lg" 
+                    onClick={handleCheckout}
+                    disabled={createOrderMutation.isPending || cartItems.length === 0}
+                  >
                     <CreditCard className="mr-2 h-4 w-4" />
-                    Proceed to Checkout
+                    {createOrderMutation.isPending ? "Processing..." : "Proceed to Checkout"}
                   </Button>
                   
                   <div className="flex items-center justify-center text-xs text-muted-foreground space-x-4">

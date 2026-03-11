@@ -16,6 +16,7 @@ const Register = () => {
     password: "",
     confirmPassword: "",
     role: "CUSTOMER" as UserRole,
+    storeName: "",
   });
   const { register, isLoading } = useAuth();
   const { toast } = useToast();
@@ -54,7 +55,16 @@ const Register = () => {
       return;
     }
 
-    const success = await register(formData.email, formData.password, formData.name, formData.role);
+    if (formData.role === 'VENDOR' && !formData.storeName) {
+      toast({
+        title: "Error",
+        description: "Please provide a store name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const success = await register(formData.email, formData.password, formData.name, formData.role, formData.storeName);
     
     if (success) {
       toast({
@@ -169,6 +179,24 @@ const Register = () => {
                   />
                 </div>
               </div>
+
+              {formData.role === 'VENDOR' && (
+                <div className="space-y-2 animate-fade-in">
+                  <Label htmlFor="storeName">Store Name</Label>
+                  <div className="relative">
+                    <Store className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="storeName"
+                      type="text"
+                      placeholder="Enter your store name"
+                      className="pl-10"
+                      value={formData.storeName}
+                      onChange={(e) => handleInputChange('storeName', e.target.value)}
+                      required={formData.role === 'VENDOR'}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>

@@ -8,101 +8,75 @@ import {
   Package, 
   Star, 
   TrendingUp, 
-  ArrowRight,
-  Gift,
   Zap,
-  Crown
+  Crown,
+  Gift,
+  ArrowRight,
+  Loader2
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+
+import { useQuery } from "@tanstack/react-query";
+import orderService from "@/services/orderService";
+import productService from "@/services/productService";
+import wishlistService from "@/services/wishlistService";
 
 const CustomerDashboard = () => {
   const { user } = useAuth();
 
+  // Fetch data with React Query
+  const { data: ordersPage, isLoading: ordersLoading, error: ordersError } = useQuery({
+    queryKey: ['myOrders', { size: 5 }],
+    queryFn: () => orderService.getMyOrders({ size: 5 }),
+  });
+
+  const { data: productsPage, isLoading: productsLoading, error: productsError } = useQuery({
+    queryKey: ['recommendedProducts', { size: 6 }],
+    queryFn: () => productService.getAll({ size: 6 }),
+  });
+
+  const { data: wishlistData, isLoading: wishlistLoading } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: () => wishlistService.getWishlist(),
+  });
+
+  // Derived data
+  const recentOrdersData = ordersPage?.content || [];
+  const recommendedProductsData = productsPage?.content || [];
+  const wishlistCount = Array.isArray(wishlistData) ? wishlistData.length : 0;
+
+  const isLoading = ordersLoading || productsLoading || wishlistLoading;
+  const hasError = !!(ordersError || productsError);
+
   const quickStats = [
     {
       title: "Orders This Month",
-      value: "8",
-      change: "+12%",
+      value: ordersPage?.totalElements?.toString() || "0",
+      change: "Lifetime",
       icon: Package,
       color: "text-primary",
     },
     {
-      title: "Total Spent",
-      value: "$2,847",
-      change: "+8%",
+      title: "Recommended",
+      value: productsPage?.totalElements?.toString() || "0",
+      change: "Available to buy",
       icon: TrendingUp,
       color: "text-success",
     },
     {
       title: "Wishlist Items",
-      value: "24",
-      change: "+3",
+      value: wishlistCount.toString(),
+      change: "Tracked items",
       icon: Heart,
       color: "text-warning",
     },
     {
-      title: "Cart Items",
-      value: "3",
+      title: "Cart Status",
+      value: "Active",
       change: "Ready to checkout",
       icon: ShoppingCart,
       color: "text-destructive",
-    },
-  ];
-
-  const recentOrders = [
-    {
-      id: "ORD-001",
-      item: "Wireless Headphones",
-      vendor: "TechStore Pro",
-      status: "Delivered",
-      date: "2 days ago",
-      amount: "$299",
-      image: "🎧"
-    },
-    {
-      id: "ORD-002", 
-      item: "Smart Watch",
-      vendor: "Gadget World",
-      status: "In Transit",
-      date: "5 days ago",
-      amount: "$199",
-      image: "⌚"
-    },
-    {
-      id: "ORD-003",
-      item: "Bluetooth Speaker",
-      vendor: "AudioTech",
-      status: "Processing",
-      date: "1 week ago", 
-      amount: "$79",
-      image: "🔊"
-    },
-  ];
-
-  const recommendedProducts = [
-    {
-      name: "Premium Camera Lens",
-      vendor: "Photo Pro",
-      price: "$599",
-      rating: 4.8,
-      image: "📷",
-      badge: "Trending"
-    },
-    {
-      name: "Gaming Keyboard",
-      vendor: "Game Master",
-      price: "$149",
-      rating: 4.9,
-      image: "⌨️",
-      badge: "Hot Deal"
-    },
-    {
-      name: "Fitness Tracker",
-      vendor: "Health Tech",
-      price: "$89",
-      rating: 4.7,
-      image: "🏃‍♂️",
-      badge: "New"
     },
   ];
 
@@ -129,13 +103,17 @@ const CustomerDashboard = () => {
                 Discover amazing products from top vendors. You have 3 items in your cart!
               </p>
               <div className="flex flex-wrap gap-3">
-                <Button size="lg" variant="secondary" className="bg-white/20 text-white border-white/30 hover:bg-white/30">
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  View Cart
+                <Button size="lg" variant="secondary" className="bg-white/20 text-white border-white/30 hover:bg-white/30" asChild>
+                  <Link to="/customer/cart">
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    View Cart
+                  </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10">
-                  <Gift className="mr-2 h-4 w-4" />
-                  Browse Deals
+                <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" asChild>
+                  <Link to="/customer/browse">
+                    <Gift className="mr-2 h-4 w-4" />
+                    Browse Deals
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -173,28 +151,42 @@ const CustomerDashboard = () => {
             <Card className="animate-fade-in shadow-elegant">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Recent Orders</CardTitle>
-                <Button variant="outline" size="sm">
-                  View All Orders
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/customer/orders">
+                    View All Orders
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                {recentOrders.map((order) => (
-                  <div key={order.id} className="flex items-center space-x-4 p-3 rounded-lg hover:bg-accent/50 transition-colors">
-                    <div className="text-2xl">{order.image}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{order.item}</p>
-                      <p className="text-sm text-muted-foreground">by {order.vendor}</p>
-                      <p className="text-xs text-muted-foreground">{order.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <Badge className={getStatusColor(order.status)}>
-                        {order.status}
-                      </Badge>
-                      <p className="text-sm font-medium mt-1">{order.amount}</p>
-                    </div>
+                {isLoading ? (
+                  <div className="p-8 flex justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
                   </div>
-                ))}
+                ) : hasError ? (
+                  <div className="p-8 text-center text-destructive">
+                    <p>Failed to load recent orders.</p>
+                  </div>
+                ) : recentOrdersData.length === 0 ? (
+                  <p className="text-muted-foreground p-4">You have no recent orders.</p>
+                ) : (
+                  recentOrdersData.map((order: any) => (
+                    <div key={order.id} className="flex items-center space-x-4 p-3 rounded-lg hover:bg-accent/50 transition-colors">
+                      <div className="text-2xl">📦</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">Order #{order.id.substring(0, 8)}</p>
+                        <p className="text-sm text-muted-foreground">{order.items?.length || 0} items</p>
+                        <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <Badge className={getStatusColor(order.status)}>
+                          {order.status}
+                        </Badge>
+                          <p className="text-sm font-medium mt-1">${order.totalAmount?.toFixed(2) || "0.00"}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           </div>
@@ -210,27 +202,43 @@ const CustomerDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {recommendedProducts.map((product, index) => (
-                  <div key={index} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-accent/30 transition-colors cursor-pointer">
-                    <div className="text-xl">{product.image}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <p className="font-medium text-sm truncate">{product.name}</p>
-                        <Badge variant="outline" className="text-xs">
-                          {product.badge}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">by {product.vendor}</p>
-                      <div className="flex items-center space-x-1 mt-1">
-                        <Star className="h-3 w-3 fill-warning text-warning" />
-                        <span className="text-xs text-muted-foreground">{product.rating}</span>
-                      </div>
-                    </div>
-                    <div className="text-sm font-medium">{product.price}</div>
+                {isLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-40 rounded-xl bg-muted animate-pulse" />
+                    ))}
                   </div>
-                ))}
-                <Button className="w-full mt-4" size="sm">
-                  Browse All Products
+                ) : hasError ? (
+                  <div className="p-8 text-center text-destructive">
+                    <p>Failed to load recommended products.</p>
+                  </div>
+                ) : recommendedProductsData.length === 0 ? (
+                  <p className="text-muted-foreground p-4">No products available.</p>
+                ) : (
+                  recommendedProductsData.map((product: any, index: number) => (
+                    <div key={index} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-accent/30 transition-colors cursor-pointer">
+                      <div className="text-xl">🛍️</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <p className="font-medium text-sm truncate">{product.name}</p>
+                          <Badge variant="outline" className="text-xs">
+                            {product.category || 'Deal'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Status: {product.status}</p>
+                        <div className="flex items-center space-x-1 mt-1">
+                          <Star className="h-3 w-3 fill-warning text-warning" />
+                          <span className="text-xs text-muted-foreground">4.8</span>
+                        </div>
+                      </div>
+                      <div className="text-sm font-medium">${product.price?.toFixed(2)}</div>
+                    </div>
+                  ))
+                )}
+                <Button className="w-full mt-4" size="sm" asChild>
+                  <Link to="/customer/browse">
+                    Browse All Products
+                  </Link>
                 </Button>
               </CardContent>
             </Card>
@@ -240,18 +248,24 @@ const CustomerDashboard = () => {
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <Button className="w-full justify-start gradient-primary" size="sm">
-                  <Heart className="mr-2 h-4 w-4" />
-                  View Wishlist (24)
+                  <CardContent className="space-y-3">
+                <Button className="w-full justify-start gradient-primary" size="sm" asChild>
+                  <Link to="/customer/wishlist">
+                    <Heart className="mr-2 h-4 w-4" />
+                    View Wishlist ({wishlistCount})
+                  </Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start" size="sm">
-                  <Package className="mr-2 h-4 w-4" />
-                  Track Orders
+                <Button variant="outline" className="w-full justify-start" size="sm" asChild>
+                  <Link to="/customer/orders">
+                    <Package className="mr-2 h-4 w-4" />
+                    Track Orders
+                  </Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start" size="sm">
-                  <Star className="mr-2 h-4 w-4" />
-                  Write Reviews
+                <Button variant="outline" className="w-full justify-start" size="sm" asChild>
+                  <Link to="/customer/reviews">
+                    <Star className="mr-2 h-4 w-4" />
+                    Write Reviews
+                  </Link>
                 </Button>
               </CardContent>
             </Card>

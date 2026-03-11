@@ -29,12 +29,14 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final VendorRepository vendorRepository;
+    private final CartService cartService;
 
     public PageResponse<OrderDto> getAllOrders(OrderStatus status, Pageable pageable) {
         Page<Order> orders = orderRepository.findAll(pageable); // Should add status filter if needed in repo
@@ -68,7 +70,7 @@ public class OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 
         if (customer.getRole() != Role.CUSTOMER) {
-            throw new RuntimeException("Only customers can create orders");
+            throw new IllegalArgumentException("Only customers can create orders");
         }
 
         Order order = Order.builder()
@@ -86,7 +88,7 @@ public class OrderService {
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
             if (product.getStock() < itemDto.getQuantity()) {
-                throw new RuntimeException("Insufficient stock for product: " + product.getName());
+                throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
             }
 
             // Reduce stock
@@ -105,7 +107,12 @@ public class OrderService {
         }
 
         order.setTotalAmount(totalAmount);
-        return mapToDto(orderRepository.save(order));
+        order = orderRepository.save(order);
+        
+        // Clear customer cart after successful order creation
+        cartService.clearCart(customerEmail);
+        
+        return mapToDto(order);
     }
 
     public OrderDto updateOrderStatus(UUID id, OrderStatus status) {
@@ -118,16 +125,60 @@ public class OrderService {
         return mapToDto(orderRepository.save(order));
     }
 
+    public OrderDto updateVendorOrderStatus(UUID orderId, OrderStatus newStatus, String vendorEmail) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        // Verify vendor owns at least one product in this order
+        com.example.smartvendorapp.entity.User vendorUser = userRepository.findByEmail(vendorEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Vendor user not found"));
+        com.example.smartvendorapp.entity.Vendor vendor = vendorRepository.findByUserId(vendorUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Vendor profile not found"));
+
+        boolean ownsProduct = order.getItems().stream()
+                .anyMatch(item -> item.getProduct().getVendor() != null
+                        && item.getProduct().getVendor().getId().equals(vendor.getId()));
+        if (!ownsProduct) {
+            throw new IllegalArgumentException("You do not have permission to update this order");
+        }
+
+        // Enforce valid forward-only status transitions
+        OrderStatus current = order.getStatus();
+        boolean validTransition = switch (current) {
+            case PENDING   -> newStatus == OrderStatus.CONFIRMED || newStatus == OrderStatus.CANCELLED;
+            case CONFIRMED -> newStatus == OrderStatus.SHIPPED   || newStatus == OrderStatus.CANCELLED;
+            case SHIPPED   -> newStatus == OrderStatus.DELIVERED;
+            default        -> false;  // DELIVERED and CANCELLED are terminal — no further transitions
+        };
+
+        if (!validTransition) {
+            String allowed = switch (current) {
+                case PENDING   -> "CONFIRMED or CANCELLED";
+                case CONFIRMED -> "SHIPPED or CANCELLED";
+                case SHIPPED   -> "DELIVERED";
+                default        -> "none (terminal status)";
+            };
+            throw new IllegalArgumentException(
+                    "Invalid transition: " + current + " → " + newStatus
+                    + ". Allowed next statuses from " + current + ": " + allowed);
+        }
+
+        order.setStatus(newStatus);
+        order.setUpdatedAt(LocalDateTime.now());
+
+        return mapToDto(orderRepository.save(order));
+    }
+
     public void cancelOrder(UUID id, String customerEmail) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
         
         if (!order.getCustomer().getEmail().equals(customerEmail)) {
-            throw new RuntimeException("Unauthorized to cancel this order");
+            throw new IllegalArgumentException("Unauthorized to cancel this order");
         }
 
-        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.PROCESSING) {
-            throw new RuntimeException("Order cannot be cancelled in current status");
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
+            throw new IllegalArgumentException("Order cannot be cancelled in current status");
         }
 
         order.setStatus(OrderStatus.CANCELLED);

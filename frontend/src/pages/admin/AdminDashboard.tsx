@@ -1,4 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { adminService } from "@/services/adminService";
 import { AdminLayout } from "@/pages/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,16 +21,21 @@ import {
   Shield,
   Activity,
   UserCheck,
-  Ban
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
 
+  const { data: dashboardStats, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['adminDashboardStats'],
+    queryFn: () => adminService.getDashboardStats(),
+  });
+
   const platformStats = [
     {
       title: "Total Users",
-      value: "2,847",
+      value: isLoadingStats ? "..." : (dashboardStats?.totalUsers.toLocaleString() || "0"),
       change: "+12.5%",
       trend: "up",
       icon: Users,
@@ -36,79 +43,47 @@ const AdminDashboard = () => {
     },
     {
       title: "Active Vendors",
-      value: "142",
+      value: isLoadingStats ? "..." : (dashboardStats?.totalVendors.toLocaleString() || "0"),
       change: "+8 this week",
       trend: "up",
       icon: Building2,
     },
     {
-      title: "Total Orders",
-      value: "15,230",
-      change: "+23.1%",
+      title: "Total Products",
+      value: isLoadingStats ? "..." : (dashboardStats?.totalProducts.toLocaleString() || "0"),
+      change: "Items listed",
       trend: "up",
       icon: ShoppingCart,
     },
     {
-      title: "Platform Revenue",
-      value: "$847,290",
-      change: "+18.2%",
+      title: "Total Orders",
+      value: isLoadingStats ? "..." : (dashboardStats?.totalOrders.toLocaleString() || "0"),
+      change: "Processed",
       trend: "up",
       icon: DollarSign,
     },
     {
       title: "Pending Approvals",
-      value: "23",
-      change: "5 urgent",
+      value: isLoadingStats ? "..." : (dashboardStats?.pendingApprovals.toString() || "0"),
+      change: "Waitlist",
       trend: "warning",
       icon: UserCheck,
     },
     {
       title: "Active Disputes",
-      value: "8",
-      change: "2 critical",
+      value: "0",
+      change: "Resolved",
       trend: "down",
       icon: AlertCircle,
     },
   ];
 
-  const recentUsers = [
-    { 
-      id: 1, 
-      name: "John Doe", 
-      email: "john@example.com", 
-      role: "customer", 
-      status: "active", 
-      joinDate: "2 hours ago",
-      orders: 12
-    },
-    { 
-      id: 2, 
-      name: "Tech Store Inc", 
-      email: "store@techstore.com", 
-      role: "vendor", 
-      status: "pending", 
-      joinDate: "5 hours ago",
-      products: 45
-    },
-    { 
-      id: 3, 
-      name: "Sarah Wilson", 
-      email: "sarah@example.com", 
-      role: "customer", 
-      status: "active", 
-      joinDate: "1 day ago",
-      orders: 3
-    },
-    { 
-      id: 4, 
-      name: "Fashion Hub", 
-      email: "contact@fashionhub.com", 
-      role: "vendor", 
-      status: "active", 
-      joinDate: "2 days ago",
-      products: 128
-    },
-  ];
+  const { data: usersList, isLoading: isLoadingUsers } = useQuery({
+    queryKey: ['adminUsers'],
+    queryFn: () => adminService.getAllUsers(), // Fetch recent users
+  });
+
+  const recentUsers = usersList?.slice(0, 5) || [];
 
   const recentOrders = [
     { 
@@ -198,13 +173,17 @@ const AdminDashboard = () => {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              System Health
+            <Button variant="outline" className="flex items-center gap-2" asChild>
+              <Link to="/admin/analytics">
+                <Activity className="h-4 w-4" />
+                System Health
+              </Link>
             </Button>
-            <Button className="gradient-primary flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Security Center
+            <Button className="gradient-primary flex items-center gap-2" asChild>
+              <Link to="/admin/security">
+                <Shield className="h-4 w-4" />
+                Security Center
+              </Link>
             </Button>
           </div>
         </div>
@@ -245,30 +224,38 @@ const AdminDashboard = () => {
                 <CardDescription>Recent registrations and account status</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {recentUsers.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-4 rounded-lg bg-accent/20 hover:bg-accent/30 transition-colors">
+                {isLoadingUsers ? (
+                  <div className="py-8 text-center text-muted-foreground animate-pulse">
+                    Loading users...
+                  </div>
+                ) : recentUsers.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    No users found.
+                  </div>
+                ) : recentUsers.map((u: any) => (
+                  <div key={u.id} className="flex items-center justify-between p-4 rounded-lg bg-accent/20 hover:bg-accent/30 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-lg bg-primary/10">
-                        {user.role === 'vendor' ? (
+                        {u.role === 'VENDOR' ? (
                           <Building2 className="h-5 w-5 text-primary" />
                         ) : (
                           <Users className="h-5 w-5 text-primary" />
                         )}
                       </div>
                       <div>
-                        <h4 className="font-medium">{user.name}</h4>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <h4 className="font-medium">{u.name}</h4>
+                        <p className="text-sm text-muted-foreground">{u.email}</p>
                         <p className="text-xs text-muted-foreground">
-                          Joined {user.joinDate} • {user.role === 'vendor' ? `${user.products} products` : `${user.orders} orders`}
+                          Joined {new Date(u.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={user.role === 'vendor' ? 'secondary' : 'outline'}>
-                        {user.role}
+                      <Badge variant={u.role === 'VENDOR' ? 'secondary' : 'outline'}>
+                        {u.role}
                       </Badge>
-                      <Badge className={getStatusColor(user.status)}>
-                        {user.status}
+                      <Badge className={getStatusColor('active')}>
+                        Active
                       </Badge>
                       <Button size="sm" variant="outline">
                         Manage
@@ -276,8 +263,10 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 ))}
-                <Button variant="outline" className="w-full">
-                  View All Users & Vendors
+                <Button variant="outline" className="w-full" asChild>
+                  <Link to="/admin/users">
+                    View All Users & Vendors
+                  </Link>
                 </Button>
               </CardContent>
             </Card>
@@ -308,8 +297,10 @@ const AdminDashboard = () => {
                   />
                 </div>
               ))}
-              <Button variant="outline" className="w-full mt-4">
-                System Details
+              <Button variant="outline" className="w-full mt-4" asChild>
+                <Link to="/admin/analytics">
+                  System Details
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -340,8 +331,10 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               ))}
-              <Button variant="outline" className="w-full">
-                View All Orders
+              <Button variant="outline" className="w-full" asChild>
+                <Link to="/admin/orders">
+                  View All Orders
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -354,29 +347,41 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" className="h-20 flex-col gap-2">
-                  <Users className="h-6 w-6" />
-                  <span className="text-sm">User Management</span>
+                <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                  <Link to="/admin/users">
+                    <Users className="h-6 w-6" />
+                    <span className="text-sm">User Management</span>
+                  </Link>
                 </Button>
-                <Button variant="outline" className="h-20 flex-col gap-2">
-                  <Building2 className="h-6 w-6" />
-                  <span className="text-sm">Vendor Approval</span>
+                <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                  <Link to="/admin/vendors">
+                    <Building2 className="h-6 w-6" />
+                    <span className="text-sm">Vendor Approval</span>
+                  </Link>
                 </Button>
-                <Button variant="outline" className="h-20 flex-col gap-2">
-                  <Package className="h-6 w-6" />
-                  <span className="text-sm">Product Review</span>
+                <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                  <Link to="/admin/products">
+                    <Package className="h-6 w-6" />
+                    <span className="text-sm">Product Review</span>
+                  </Link>
                 </Button>
-                <Button variant="outline" className="h-20 flex-col gap-2">
-                  <AlertCircle className="h-6 w-6" />
-                  <span className="text-sm">Dispute Resolution</span>
+                <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                  <Link to="/admin/disputes">
+                    <AlertCircle className="h-6 w-6" />
+                    <span className="text-sm">Dispute Resolution</span>
+                  </Link>
                 </Button>
-                <Button variant="outline" className="h-20 flex-col gap-2">
-                  <Shield className="h-6 w-6" />
-                  <span className="text-sm">Security Center</span>
+                <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                  <Link to="/admin/security">
+                    <Shield className="h-6 w-6" />
+                    <span className="text-sm">Security Center</span>
+                  </Link>
                 </Button>
-                <Button variant="outline" className="h-20 flex-col gap-2">
-                  <TrendingUp className="h-6 w-6" />
-                  <span className="text-sm">Analytics</span>
+                <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                  <Link to="/admin/analytics">
+                    <TrendingUp className="h-6 w-6" />
+                    <span className="text-sm">Analytics</span>
+                  </Link>
                 </Button>
               </div>
             </CardContent>

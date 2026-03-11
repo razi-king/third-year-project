@@ -23,4 +23,10 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("SELECT DISTINCT o FROM Order o JOIN o.items i WHERE i.product.vendor.id = :vendorId AND " +
            "(:status IS NULL OR o.status = :status)")
     Page<Order> findByVendorIdAndStatus(@Param("vendorId") UUID vendorId, @Param("status") OrderStatus status, Pageable pageable);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status != 'CANCELLED'")
+    Double getTotalRevenue();
+
+    @Query("SELECT COALESCE(SUM(i.price * i.quantity), 0) FROM OrderItem i WHERE i.product.vendor.id = :vendorId AND i.order.status != 'CANCELLED'")
+    Double getTotalRevenueForVendor(@Param("vendorId") UUID vendorId);
 }

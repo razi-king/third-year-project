@@ -28,6 +28,11 @@ const analyticsService = {
     return response.data;
   },
 
+  getVendorStats: async (): Promise<{ totalProducts: number, totalOrders: number, totalSales: number, totalCustomers: number }> => {
+    const response = await api.get('/api/analytics/vendor');
+    return response.data;
+  },
+
   getSalesData: async (period: 'week' | 'month' | 'year'): Promise<SalesData[]> => {
     const response = await api.get<SalesData[]>('/api/analytics/sales', { params: { period } });
     return response.data;

@@ -1,3 +1,7 @@
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import productService from "@/services/productService";
+import { useAuth } from "@/context/AuthContext";
 import { VendorLayout } from "@/components/layout/VendorLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,64 +20,32 @@ import {
 } from "lucide-react";
 
 const Products = () => {
-  const products = [
-    {
-      id: 1,
-      name: "Wireless Bluetooth Headphones",
-      category: "Electronics",
-      price: "$89.99",
-      stock: 23,
-      sales: 145,
-      rating: 4.8,
-      status: "Active",
-      image: "🎧",
-    },
-    {
-      id: 2,
-      name: "Premium Coffee Beans (2kg)",
-      category: "Food & Beverage",
-      price: "$45.99",
-      stock: 67,
-      sales: 89,
-      rating: 4.6,
-      status: "Active",
-      image: "☕",
-    },
-    {
-      id: 3,
-      name: "Organic Face Cream Set",
-      category: "Beauty",
-      price: "$129.99",
-      stock: 12,
-      sales: 67,
-      rating: 4.9,
-      status: "Low Stock",
-      image: "🧴",
-    },
-    {
-      id: 4,
-      name: "Fitness Tracker Pro",
-      category: "Electronics",
-      price: "$199.99",
-      stock: 0,
-      sales: 234,
-      rating: 4.7,
-      status: "Out of Stock",
-      image: "⌚",
-    },
-  ];
+  const { user } = useAuth();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: productsPage, isLoading, error } = useQuery({
+    queryKey: ['vendorProducts', user?.id, searchQuery],
+    queryFn: () => productService.getByVendor(user?.id || '', { search: searchQuery }),
+    enabled: !!user?.id,
+  });
+
+  const products = productsPage?.content || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Active":
+      case "ACTIVE":
+      case "active":
         return "bg-success text-success-foreground";
-      case "Low Stock":
-        return "bg-warning text-warning-foreground";
-      case "Out of Stock":
-        return "bg-destructive text-destructive-foreground";
       default:
         return "bg-muted text-muted-foreground";
     }
+  };
+
+  const getDerivedStatus = (stock: number, status: string) => {
+    if (status !== 'ACTIVE' && status !== 'active') return status;
+    if (stock <= 0) return "Out of Stock";
+    if (stock < 20) return "Low Stock";
+    return "Active";
   };
 
   return (
@@ -102,6 +74,8 @@ const Products = () => {
                 <Input
                   placeholder="Search products..."
                   className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
               <Button variant="outline" className="flex items-center gap-2">
@@ -120,46 +94,63 @@ const Products = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {products.map((product) => (
-                <div key={product.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent/20 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="text-3xl">{product.image}</div>
-                    <div>
-                      <h3 className="font-semibold">{product.name}</h3>
-                      <p className="text-sm text-muted-foreground">{product.category}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Star className="h-3 w-3 fill-current text-yellow-500" />
-                        <span className="text-xs">{product.rating}</span>
-                        <span className="text-xs text-muted-foreground">•</span>
-                        <span className="text-xs text-muted-foreground">{product.sales} sales</span>
+              {isLoading ? (
+                <div className="py-8 text-center text-muted-foreground animate-pulse">
+                  Loading your products...
+                </div>
+              ) : error ? (
+                <div className="py-8 text-center text-destructive">
+                  Error loading products. Please try again.
+                </div>
+              ) : products.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  You haven't listed any products yet.
+                </div>
+              ) : (
+                products.map((product: any) => {
+                  const derivedStatus = getDerivedStatus(product.stock, product.status);
+                  return (
+                    <div key={product.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent/20 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="text-3xl">{product.imageUrl || "🛒"}</div>
+                        <div>
+                          <h3 className="font-semibold">{product.name}</h3>
+                          <p className="text-sm text-muted-foreground">{product.category}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Star className="h-3 w-3 fill-current text-yellow-500" />
+                            <span className="text-xs">{4.5}</span>
+                            <span className="text-xs text-muted-foreground">•</span>
+                            <span className="text-xs text-muted-foreground">{0} sales</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-6">
+                        <div className="text-right">
+                          <p className="font-semibold">${product.price?.toFixed(2)}</p>
+                          <p className="text-sm text-muted-foreground">Stock: {product.stock}</p>
+                        </div>
+                        
+                        <Badge className={getStatusColor(product.status)}>
+                          {derivedStatus}
+                        </Badge>
+                        
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="icon">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <p className="font-semibold">{product.price}</p>
-                      <p className="text-sm text-muted-foreground">Stock: {product.stock}</p>
-                    </div>
-                    
-                    <Badge className={getStatusColor(product.status)}>
-                      {product.status}
-                    </Badge>
-                    
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>

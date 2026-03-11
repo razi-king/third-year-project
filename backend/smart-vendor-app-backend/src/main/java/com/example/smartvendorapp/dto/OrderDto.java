@@ -4,6 +4,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+
 import com.example.smartvendorapp.enums.OrderStatus;
 
 import lombok.AllArgsConstructor;
@@ -21,8 +24,13 @@ public class OrderDto {
     private String customerName;
     private Double totalAmount;
     private OrderStatus status;
+
+    @NotBlank(message = "Shipping address is required")
     private String shippingAddress;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @NotEmpty(message = "Order must contain at least one item")
     private List<OrderItemDto> items;
 }
